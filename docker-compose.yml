@@ -1,0 +1,191 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+      daphne -b 0.0.0.0 -p 8000 backend.asgi:application"
+    volumes:
+      - static_volume:/app/static
+    env_file:
+      - .env.compose
+    environment:
+      - DB_NAME=${DB_NAME:-QuizzyChess}
+      - DB_USER=${DB_USER:-QuizzyChess}
+      - DB_PASSWORD=${DB_PASSWORD:-QuizzyChess}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - db
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/core/health/"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 40s
+
+  celery:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A backend worker --loglevel=info
+    volumes:
+      - static_volume:/app/static
+    env_file:
+      - .env.compose
+    environment:
+      - DB_NAME=${DB_NAME:-QuizzyChess}
+      - DB_USER=${DB_USER:-QuizzyChess}
+      - DB_PASSWORD=${DB_PASSWORD:-QuizzyChess}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - db
+
+  celery-quiz:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A backend worker -Q quiz --loglevel=info
+    volumes:
+      - static_volume:/app/static
+    env_file:
+      - .env.compose
+    environment:
+      - DB_NAME=${DB_NAME:-QuizzyChess}
+      - DB_USER=${DB_USER:-QuizzyChess}
+      - DB_PASSWORD=${DB_PASSWORD:-QuizzyChess}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - db
+
+  celery-analysis:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A backend worker -Q analysis --loglevel=info
+    volumes:
+      - static_volume:/app/static
+    env_file:
+      - .env.compose
+    environment:
+      - DB_NAME=${DB_NAME:-QuizzyChess}
+      - DB_USER=${DB_USER:-QuizzyChess}
+      - DB_PASSWORD=${DB_PASSWORD:-QuizzyChess}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - db
+
+  celery-maintenance:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A backend worker -Q maintenance --loglevel=info
+    volumes:
+      - static_volume:/app/static
+    env_file:
+      - .env.compose
+    environment:
+      - DB_NAME=${DB_NAME:-QuizzyChess}
+      - DB_USER=${DB_USER:-QuizzyChess}
+      - DB_PASSWORD=${DB_PASSWORD:-QuizzyChess}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - db
+
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A backend beat --loglevel=info
+    env_file:
+      - .env.compose
+    environment:
+      - DB_NAME=${DB_NAME:-QuizzyChess}
+      - DB_USER=${DB_USER:-QuizzyChess}
+      - DB_PASSWORD=${DB_PASSWORD:-QuizzyChess}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - db
+
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: ${DB_NAME:-QuizzyChess}
+      POSTGRES_USER: ${DB_USER:-QuizzyChess}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-QuizzyChess}
+    ports:
+      - "54321:5432"
+    restart: unless-stopped
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:latest
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.25-alpine
+    ports:
+      - "80:80"
+    volumes:
+      - static_volume:/static
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    command: >
+      sh -c "
+        until curl -s http://backend:8000/api/core/health/; do
+          echo 'Waiting for backend...';
+          sleep 3;
+        done;
+        nginx -g 'daemon off;'
+      "
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    env_file:
+      - .env.compose
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  static_volume:
+  postgres_data:
