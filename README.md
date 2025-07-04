@@ -68,7 +68,6 @@ When a player attempts to capture a high-value piece (queen, rook, bishop), they
 ### DevOps
 
 - **Dockerized:** Backend, Celery, Redis, Postgres, Nginx
-- **Deployment:** Vercel (frontend), Railway/Render (backend)
 - **Logging:** Centralized, error/info logs for all services
 
 ---
@@ -156,7 +155,7 @@ Quizzy Chess is a fully functional, modern, and educational chess platform that 
 ### 1. Clone the repo
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/karar-hayder/Quizzy-Chess.git
 cd QuizzyChess
 ```
 
@@ -188,7 +187,7 @@ npm run dev
 
 ## 🤝 Contributing
 
-Pull requests and issues are welcome! For major changes, please open an issue first to discuss what you would like to change.
+- Pull requests and issues are welcome! For major changes, please open an issue first to discuss what you would like to change.
 
 ---
 
